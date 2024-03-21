@@ -1,0 +1,20 @@
+[package]
+name = "rust_anchor_cpi"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "rust_anchor_cpi"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+squads-multisig-program = {version="2.0.0", features=["cpi"]}
