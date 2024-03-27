@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "npx tsx main.ts"
+    "test": "npx mocha -r ts-node/register 'main.ts'"
   },
   "dependencies": {
     "@solana/web3.js": "^1.73.0",
