@@ -5,7 +5,6 @@ import {
   LAMPORTS_PER_SOL,
   SystemProgram,
   TransactionMessage,
-  clusterApiUrl,
 } from "@solana/web3.js";
 
 const { Permission, Permissions } = multisig.types;
@@ -19,6 +18,8 @@ describe("Interacting with the Squads V4 SDK", () => {
       creator.publicKey,
       1 * LAMPORTS_PER_SOL
     );
+
+    console.log("Confirming Airdrop...");
     await connection.confirmTransaction(airdropSignature);
   });
 
@@ -43,6 +44,7 @@ describe("Interacting with the Squads V4 SDK", () => {
     const configTreasury = programConfig.treasury;
 
     // Create the multisig
+    console.log("Creating Multisig");
     const signature = await multisig.rpc.multisigCreateV2({
       connection,
       // One time random Key
@@ -69,8 +71,24 @@ describe("Interacting with the Squads V4 SDK", () => {
       treasury: configTreasury,
       sendOptions: { skipPreflight: true },
     });
-    await connection.confirmTransaction(signature);
-    console.log("Multisig created: ", signature);
+
+    console.log("Confirming Transaction...");
+    const block = await connection.getLatestBlockhash("confirmed");
+    
+    const result = await connection.confirmTransaction(
+      {
+        signature,
+        ...block,
+      },
+      "confirmed",
+    );
+
+    const error = result.value.err;
+    if (error) {
+      throw Error(error.toString());
+    }
+
+    console.log("Transaction confirmed.");
   });
 
   it("Create a transaction proposal", async () => {
@@ -113,6 +131,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       memo: "Transfer 0.1 SOL to creator",
     });
 
+    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature1);
 
     console.log("Transaction created: ", signature1);
@@ -125,6 +144,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       creator,
     });
 
+    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature2);
 
     console.log("Transaction proposal created: ", signature2);
@@ -145,6 +165,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       member: creator,
     });
 
+    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature1);
 
     const signature2 = await multisig.rpc.proposalApprove({
@@ -155,6 +176,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       member: secondMember,
     });
 
+    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature2);
   });
 
@@ -179,6 +201,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       sendOptions: { skipPreflight: true },
     });
 
+    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature);
     console.log("Transaction executed: ", signature);
   });
