@@ -19,7 +19,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       1 * LAMPORTS_PER_SOL
     );
 
-    console.log("Confirming Airdrop...");
+    console.log("Airdropping...");
     await connection.confirmTransaction(airdropSignature);
   });
 
@@ -44,7 +44,6 @@ describe("Interacting with the Squads V4 SDK", () => {
     const configTreasury = programConfig.treasury;
 
     // Create the multisig
-    console.log("Creating Multisig");
     const signature = await multisig.rpc.multisigCreateV2({
       connection,
       // One time random Key
@@ -72,9 +71,7 @@ describe("Interacting with the Squads V4 SDK", () => {
       sendOptions: { skipPreflight: true },
     });
 
-    console.log("Confirming Transaction...");
     const block = await connection.getLatestBlockhash("confirmed");
-    
     const result = await connection.confirmTransaction(
       {
         signature,
@@ -87,8 +84,6 @@ describe("Interacting with the Squads V4 SDK", () => {
     if (error) {
       throw Error(error.toString());
     }
-
-    console.log("Transaction confirmed.");
   });
 
   it("Create a transaction proposal", async () => {
@@ -202,7 +197,19 @@ describe("Interacting with the Squads V4 SDK", () => {
     });
 
     console.log("Confirming Transaction...");
-    await connection.confirmTransaction(signature);
+    const block = await connection.getLatestBlockhash("confirmed");
+    const result = await connection.confirmTransaction(
+      {
+        signature,
+        ...block,
+      },
+      "confirmed",
+    );
+
+    const error = result.value.err;
+    if (error) {
+      throw Error(error.toString());
+    }
     console.log("Transaction executed: ", signature);
   });
 });
