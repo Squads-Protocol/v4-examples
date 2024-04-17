@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "npx mocha -r ts-node/register 'main.ts'"
+    "test": "npx mocha -r ts-node/register 'main.ts' --timeout 600000"
   },
   "dependencies": {
     "@solana/web3.js": "^1.73.0",

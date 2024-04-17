@@ -5,11 +5,10 @@ import {
   LAMPORTS_PER_SOL,
   SystemProgram,
   TransactionMessage,
-  clusterApiUrl,
 } from "@solana/web3.js";
 
 const { Permission, Permissions } = multisig.types;
-const connection = new Connection("http://localhost:8899", "confirmed");
+const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
 describe("Interacting with the Squads V4 SDK", () => {
   const creator = Keypair.generate();
@@ -19,6 +18,8 @@ describe("Interacting with the Squads V4 SDK", () => {
       creator.publicKey,
       1 * LAMPORTS_PER_SOL
     );
+
+    console.log("Airdropping...");
     await connection.confirmTransaction(airdropSignature);
   });
 
@@ -69,8 +70,20 @@ describe("Interacting with the Squads V4 SDK", () => {
       treasury: configTreasury,
       sendOptions: { skipPreflight: true },
     });
-    await connection.confirmTransaction(signature);
-    console.log("Multisig created: ", signature);
+
+    const block = await connection.getLatestBlockhash("confirmed");
+    const result = await connection.confirmTransaction(
+      {
+        signature,
+        ...block,
+      },
+      "confirmed",
+    );
+
+    const error = result.value.err;
+    if (error) {
+      throw Error(error.toString());
+    }
   });
 
   it("Create a transaction proposal", async () => {
@@ -179,7 +192,19 @@ describe("Interacting with the Squads V4 SDK", () => {
       sendOptions: { skipPreflight: true },
     });
 
-    await connection.confirmTransaction(signature);
+    const block = await connection.getLatestBlockhash("confirmed");
+    const result = await connection.confirmTransaction(
+      {
+        signature,
+        ...block,
+      },
+      "confirmed",
+    );
+
+    const error = result.value.err;
+    if (error) {
+      throw Error(error.toString());
+    }
     console.log("Transaction executed: ", signature);
   });
 });
