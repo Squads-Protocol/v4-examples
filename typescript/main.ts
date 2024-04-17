@@ -126,7 +126,6 @@ describe("Interacting with the Squads V4 SDK", () => {
       memo: "Transfer 0.1 SOL to creator",
     });
 
-    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature1);
 
     console.log("Transaction created: ", signature1);
@@ -139,7 +138,6 @@ describe("Interacting with the Squads V4 SDK", () => {
       creator,
     });
 
-    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature2);
 
     console.log("Transaction proposal created: ", signature2);
@@ -160,7 +158,6 @@ describe("Interacting with the Squads V4 SDK", () => {
       member: creator,
     });
 
-    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature1);
 
     const signature2 = await multisig.rpc.proposalApprove({
@@ -171,7 +168,6 @@ describe("Interacting with the Squads V4 SDK", () => {
       member: secondMember,
     });
 
-    console.log("Confirming Transaction...");
     await connection.confirmTransaction(signature2);
   });
 
@@ -196,7 +192,6 @@ describe("Interacting with the Squads V4 SDK", () => {
       sendOptions: { skipPreflight: true },
     });
 
-    console.log("Confirming Transaction...");
     const block = await connection.getLatestBlockhash("confirmed");
     const result = await connection.confirmTransaction(
       {
