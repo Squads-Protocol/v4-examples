@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 
 const { Permission, Permissions } = multisig.types;
-const connection = new Connection("http://localhost:8899", "confirmed");
+const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
 describe("Interacting with the Squads V4 SDK", () => {
   const creator = Keypair.generate();
