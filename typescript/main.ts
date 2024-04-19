@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 
 const { Permission, Permissions } = multisig.types;
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection("http://localhost:8899", "confirmed");
 
 describe("Interacting with the Squads V4 SDK", () => {
   const creator = Keypair.generate();
@@ -31,6 +31,7 @@ describe("Interacting with the Squads V4 SDK", () => {
   });
 
   it("Create a new multisig", async () => {
+    try {
     const programConfigPda = multisig.getProgramConfigPda({})[0];
 
     console.log("Program Config PDA: ", programConfigPda.toBase58());
@@ -84,6 +85,9 @@ describe("Interacting with the Squads V4 SDK", () => {
     if (error) {
       throw Error(error.toString());
     }
+  } catch(err) {
+    throw new Error(err);
+  }
   });
 
   it("Create a transaction proposal", async () => {
