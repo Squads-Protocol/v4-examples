@@ -10,7 +10,6 @@ import {
 } from "@solana/web3.js";
 import { readFileSync } from "fs";
 import path from "path";
-import { expect } from "chai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -34,18 +33,11 @@ const creator = Keypair.fromSecretKey(new Uint8Array(keyFileContents));
 const secondMember = Keypair.generate();
 
 describe("Interacting with the Squads V4 SDK", () => {
-  /*
-  before(async () => {
-    const airdropSignature = await connection.requestAirdrop(
-      creator.publicKey,
-      1 * LAMPORTS_PER_SOL
-    );
+  // This script uses devnet for the sake of us having everything we need (like program config PDA)
+  // Will require a devnet RPC endpoint be added to a .env file. If using localnet, airdrops will work correctly, 
+  // and can be used instead of a transfer from the user's default wallet. 
 
-    console.log("Airdropping...");
-    await connection.confirmTransaction(airdropSignature);
-  });
-  */
-
+  // Be sure you have at least 2 devnet SOL to run this script fully
   it("Create a new multisig", async () => {
     try {
       await connection.requestAirdrop(
@@ -73,15 +65,15 @@ describe("Interacting with the Squads V4 SDK", () => {
 
       tx.sign([creator]);
 
-      console.log("Sending tx...");
+      console.log("✨ Sending SOL...");
       await connection.sendTransaction(tx);
-      console.log("SOL sent.");
+      console.log("✅ SOL sent.");
     }
 
     try {
       const programConfigPda = multisig.getProgramConfigPda({})[0];
 
-      console.log("Program Config PDA:", programConfigPda.toBase58());
+      console.log("✨ Program Config PDA:", programConfigPda.toBase58());
 
       const programConfig =
         await multisig.accounts.ProgramConfig.fromAccountAddress(
@@ -91,6 +83,7 @@ describe("Interacting with the Squads V4 SDK", () => {
 
       const configTreasury = programConfig.treasury;
       // Create the multisig
+      console.log("✨ Creating Squad...");
       const signature = await multisig.rpc.multisigCreateV2({
         connection,
         // One time random Key
@@ -131,6 +124,8 @@ describe("Interacting with the Squads V4 SDK", () => {
       if (error) {
         throw Error(error.toString());
       }
+
+      console.log("✅ Squad Created:", signature);
     } catch (err) {
       throw new Error(err);
     }
@@ -160,9 +155,9 @@ describe("Interacting with the Squads V4 SDK", () => {
 
     tx.sign([creator]);
 
-    console.log("Sending tx...");
-    await connection.sendTransaction(tx);
-    console.log("SOL sent to vault.");
+    console.log("✨ Sending transaction...");
+    const sendSig = await connection.sendTransaction(tx);
+    console.log("✅ SOL sent to vault:", sendSig);
 
     const instruction = SystemProgram.transfer({
       // The transfer is being signed from the Squads Vault, that is why we use the VaultPda
@@ -187,6 +182,7 @@ describe("Interacting with the Squads V4 SDK", () => {
 
     const newTransactionIndex = BigInt(currentTransactionIndex + 1);
 
+    console.log("✨ Creating vault transaction...");
     const signature1 = await multisig.rpc.vaultTransactionCreate({
       connection,
       feePayer: creator,
@@ -200,9 +196,9 @@ describe("Interacting with the Squads V4 SDK", () => {
     });
 
     await connection.confirmTransaction(signature1);
+    console.log("✅ Transaction created:", signature1);
 
-    console.log("Transaction created:", signature1);
-
+    console.log("✨ Creating proposal...");
     const signature2 = await multisig.rpc.proposalCreate({
       connection,
       feePayer: creator,
@@ -212,8 +208,7 @@ describe("Interacting with the Squads V4 SDK", () => {
     });
 
     await connection.confirmTransaction(signature2);
-
-    console.log("Transaction proposal created:", signature2);
+    console.log("✅ Proposal created:", signature2);
 
     const transactionIndex =
       await multisig.accounts.Multisig.fromAccountAddress(
@@ -221,6 +216,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         multisigPda
       ).then((info) => info.transactionIndex);
 
+    console.log("✨ Wallet 1 approving...");
     const approvalSig1 = await multisig.rpc.proposalApprove({
       connection,
       feePayer: creator,
@@ -230,7 +226,9 @@ describe("Interacting with the Squads V4 SDK", () => {
     });
 
     await connection.confirmTransaction(approvalSig1);
+    console.log("✅ Wallet 1 approved:", approvalSig1);
 
+    console.log("✨ Wallet 2 approving...");
     const approvalSig2 = await multisig.rpc.proposalApprove({
       connection,
       feePayer: creator,
@@ -240,6 +238,7 @@ describe("Interacting with the Squads V4 SDK", () => {
     });
 
     await connection.confirmTransaction(approvalSig2);
+    console.log("✅ Wallet 2 approved:", approvalSig2);
 
     try {
       const transactionIndex =
@@ -253,7 +252,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         transactionIndex: BigInt(transactionIndex),
       });
 
-      console.log(`trying to execute ${proposalPda.toBase58()}`);
+      console.log(`✨ Executing ${proposalPda.toBase58()}...`);
       const signature = await multisig.rpc.vaultTransactionExecute({
         connection,
         feePayer: creator,
@@ -264,9 +263,8 @@ describe("Interacting with the Squads V4 SDK", () => {
         sendOptions: { skipPreflight: true },
       });
 
-      console.log("Exec signture:", signature);
-      await connection.confirmTransaction(signature, "finalized");
-      console.log("Transaction executed:", signature);
+      await connection.confirmTransaction(signature, "confirmed");
+      console.log("✅ Transaction executed:", signature);
     } catch (err) {
       console.log(JSON.stringify(err));
       throw err;
@@ -274,6 +272,13 @@ describe("Interacting with the Squads V4 SDK", () => {
   });
 
   describe("Working with batches in v4 SDK", () => {
+    // STEPS FOR WORKING WITH BATCHES
+    // 1. Create a batch
+    // 2. Create a proposal as a draft
+    // 3. Add the proposal to the batch
+    // 4. Activate the proposal
+    // 5. Vote on the proposal
+    // 6. Execute the proposal
     it("Create a batch & add messages", async () => {
       const [vaultPda] = multisig.getVaultPda({
         multisigPda,
@@ -284,7 +289,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         // The transfer is being signed from the Squads Vault, that is why we use the VaultPda
         fromPubkey: vaultPda,
         toPubkey: creator.publicKey,
-        lamports: 1 * LAMPORTS_PER_SOL,
+        lamports: 1,
       });
       // This message contains the instructions that the transaction is going to execute
       const transferMessage = new TransactionMessage({
@@ -303,41 +308,11 @@ describe("Interacting with the Squads V4 SDK", () => {
 
       const newTransactionIndex = BigInt(currentTransactionIndex + 1);
 
-      console.log("Creating vault transaction...");
-      const vaultTx = await multisig.rpc.vaultTransactionCreate({
-        connection,
-        feePayer: creator,
-        multisigPda,
-        transactionIndex: newTransactionIndex,
-        creator: creator.publicKey,
-        vaultIndex: 0,
-        ephemeralSigners: 0,
-        transactionMessage: transferMessage,
-        memo: "Transfer 0.1 SOL to creator",
-      });
-
-      await connection.confirmTransaction(vaultTx, "finalized");
-      console.log("Vault Tx created:", vaultTx);
-
-      console.log("Creating transfer proposal...");
-      const signature = await multisig.rpc.proposalCreate({
-        connection,
-        feePayer: creator,
-        multisigPda,
-        transactionIndex: newTransactionIndex,
-        creator,
-      });
-
-      await connection.confirmTransaction(signature, "finalized");
-      console.log("Prop created:", signature);
-
-      const batchTransactionIndex = BigInt(Number(newTransactionIndex) + 1);
-
-      console.log("Creating a batch...");
+      console.log("✨ Creating a batch...");
       const batchSignature = await multisig.rpc.batchCreate({
         connection,
         feePayer: creator,
-        batchIndex: batchTransactionIndex,
+        batchIndex: newTransactionIndex,
         creator: creator,
         rentPayer: creator,
         multisigPda,
@@ -345,24 +320,53 @@ describe("Interacting with the Squads V4 SDK", () => {
         memo: "This is a batch with one message",
       });
 
-      await connection.confirmTransaction(batchSignature, "finalized");
-      console.log("Batch created:", batchSignature);
+      await connection.confirmTransaction(batchSignature, "confirmed");
+      console.log("✅ Batch created:", batchSignature);
 
-      /*
-      console.log("Activating proposal...");
-      const activate = await multisig.rpc.proposalActivate({
+      console.log("✨ Creating transfer proposal...");
+      const signature = await multisig.rpc.proposalCreate({
         connection,
         feePayer: creator,
-        transactionIndex: BigInt(newTransactionIndex),
         multisigPda,
+        transactionIndex: newTransactionIndex,
+        creator,
+        isDraft: true,
+      });
+
+      await connection.confirmTransaction(signature, "confirmed");
+      console.log("✅ Proposal created:", signature);
+
+      console.log("✨ Adding transaction to batch...");
+      const batchTx = await multisig.rpc.batchAddTransaction({
+        connection,
+        feePayer: creator,
+        // Index of the batch globally, like any other transaction
+        batchIndex: BigInt(newTransactionIndex),
+        multisigPda,
+        vaultIndex: 0,
+        transactionMessage: transferMessage,
+        // Index of the transaction inside of the batch! Not globally. Starts at 1
+        transactionIndex: 1,
+        ephemeralSigners: 0,
         member: creator,
       });
 
-      await connection.confirmTransaction(activate, "finalized");
-      console.log("Proposal activated:", activate);
-      */
+      await connection.confirmTransaction(batchTx, "confirmed");
+      console.log("✅ Message added to batch:", batchTx);
 
-      console.log("Wallet 1 approving...");
+      console.log("✨ Activating proposal...");
+      const activate = await multisig.rpc.proposalActivate({
+        connection,
+        feePayer: creator,
+        member: creator,
+        multisigPda,
+        transactionIndex: newTransactionIndex,
+      });
+
+      await connection.confirmTransaction(activate, "confirmed");
+      console.log("✅ Proposal activated:", activate);
+
+      console.log("✨ Wallet 1 approving...");
       const signature1 = await multisig.rpc.proposalApprove({
         connection,
         feePayer: creator,
@@ -371,10 +375,10 @@ describe("Interacting with the Squads V4 SDK", () => {
         member: creator,
       });
 
-      await connection.confirmTransaction(signature1, "finalized");
-      console.log("Vote cast:", signature1);
+      await connection.confirmTransaction(signature1, "confirmed");
+      console.log("✅ Vote cast:", signature1);
 
-      console.log("Wallet 2 approving...");
+      console.log("✨ Wallet 2 approving...");
       const signature2 = await multisig.rpc.proposalApprove({
         connection,
         feePayer: creator,
@@ -383,82 +387,46 @@ describe("Interacting with the Squads V4 SDK", () => {
         member: secondMember,
       });
 
-      await connection.confirmTransaction(signature2, "finalized");
-      console.log("Second vote cast:", signature2);
+      await connection.confirmTransaction(signature2, "confirmed");
+      console.log("✅ Second vote cast:", signature2);
 
-      console.log("Adding proposal to batch...");
-      const batchTx = await multisig.rpc.batchAddTransaction({
-        connection,
-        feePayer: creator,
-        batchIndex: batchTransactionIndex,
-        multisigPda,
-        vaultIndex: 0,
-        transactionMessage: transferMessage,
-        transactionIndex: Number(newTransactionIndex),
-        ephemeralSigners: 0, 
-        member: creator,
-      });
-
-      await connection.confirmTransaction(batchTx, "finalized");
-      console.log("Message added to batch:", batchTx);
-
-      /*
-      const batchTx2 = await multisig.rpc.batchAddTransaction({
-        connection,
-        feePayer: creator,
-        batchIndex: newTransactionIndex,
-        multisigPda,
-        vaultIndex: 0,
-        transactionMessage: transferMessage,
-        transactionIndex: 2,
-        ephemeralSigners: 0,
-        member: creator,
-      });
-  
-      await connection.confirmTransaction(batchTx2, "finalized");
-      console.log("A second message added to batch:", batchTx2);
-  
-      const batch = await multisig.getBatchTransactionPda({
-        multisigPda,
-        batchIndex: newTransactionIndex,
-        transactionIndex: 0
-      });
-      /*
-  
-      console.log(batch[0])
-  
-      const batchInfo = await multisig.accounts.Batch.fromAccountAddress(
-        connection,
-        batch[0]
+      const tx = new VersionedTransaction(
+        new TransactionMessage({
+          payerKey: creator.publicKey,
+          recentBlockhash: await (
+            await connection.getLatestBlockhash()
+          ).blockhash,
+          instructions: [
+            SystemProgram.transfer({
+              fromPubkey: creator.publicKey,
+              toPubkey: vaultPda,
+              lamports: 1_000_000_000,
+            }),
+          ],
+        }).compileToV0Message()
       );
   
-      console.log("Batch account:", batchInfo);
+      tx.sign([creator]);
   
-      //expect(batch);
-      */
+      console.log("✨ Sending more SOL to vault...");
+      const sendSig = await connection.sendTransaction(tx);
+      console.log("✅ SOL sent to vault:", sendSig);
 
-      /*
+      console.log("✨ Executing batch...");
       const batchExec = await multisig.rpc.batchExecuteTransaction({
         connection,
         feePayer: creator,
+        // Index of the batch globally
         batchIndex: newTransactionIndex,
         multisigPda,
-        transactionIndex: newTransactionIndex,
+        // Index of targeted transaction in the batch
+        transactionIndex: 1,
         member: creator,
-        sendOptions: { skipPreflight: true }
+        sendOptions: { skipPreflight: true },
       });
-  
+
       await connection.confirmTransaction(batchExec);
-      console.log("Transaction added to batch:", batchSignature);
-      */
+      console.log("✅ Batch Executed:", batchExec);
     });
   });
 });
-
-/// Batches are in a prelim state, need activate the proposal
-/// 1. Create batch
-/// 2. Create proposals
-/// 3. Add prop to batch
-/// 4. Active proposal
-/// 5. Vote on proposal
-/// 6. Batch execute
