@@ -4,7 +4,8 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.73.0",
-    "@sqds/multisig": "^2.1.1"
+    "@sqds/multisig": "^2.1.1",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/chai": "^4.3.3",
