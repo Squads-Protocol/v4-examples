@@ -34,8 +34,8 @@ const secondMember = Keypair.generate();
 
 describe("Interacting with the Squads V4 SDK", () => {
   // This script uses devnet for the sake of us having everything we need (like program config PDA)
-  // Will require a devnet RPC endpoint be added to a .env file. If using localnet, airdrops will work correctly, 
-  // and can be used instead of a transfer from the user's default wallet. 
+  // Will require a devnet RPC endpoint be added to a .env file. If using localnet, airdrops will work correctly,
+  // and can be used instead of a transfer from the user's default wallet.
 
   // Be sure you have at least 2 devnet SOL to run this script fully
   it("Create a new multisig", async () => {
@@ -279,7 +279,7 @@ describe("Interacting with the Squads V4 SDK", () => {
     // 4. Activate the proposal
     // 5. Vote on the proposal
     // 6. Execute the proposal
-    it("Create a batch & add messages", async () => {
+    it("Update threshold, create a batch, add message, and execute", async () => {
       const [vaultPda] = multisig.getVaultPda({
         multisigPda,
         index: 0,
@@ -308,11 +308,31 @@ describe("Interacting with the Squads V4 SDK", () => {
 
       const newTransactionIndex = BigInt(currentTransactionIndex + 1);
 
+      console.log("✨ Updating threshold to 1...");
+      const configSignature = await multisig.rpc.configTransactionCreate({
+        connection,
+        feePayer: creator,
+        multisigPda: multisigPda,
+        transactionIndex: newTransactionIndex,
+        creator: creator.publicKey,
+        actions: [
+          {
+            __kind: "ChangeThreshold",
+            newThreshold: 1,
+          },
+        ],
+      });
+
+      await connection.confirmTransaction(configSignature, "confirmed");
+      console.log("✅ Threshold updated:", configSignature);
+
+      const nextTransactionIndex = BigInt(currentTransactionIndex + 2);
+
       console.log("✨ Creating a batch...");
       const batchSignature = await multisig.rpc.batchCreate({
         connection,
         feePayer: creator,
-        batchIndex: newTransactionIndex,
+        batchIndex: nextTransactionIndex,
         creator: creator,
         rentPayer: creator,
         multisigPda,
@@ -328,7 +348,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         connection,
         feePayer: creator,
         multisigPda,
-        transactionIndex: newTransactionIndex,
+        transactionIndex: nextTransactionIndex,
         creator,
         isDraft: true,
       });
@@ -341,7 +361,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         connection,
         feePayer: creator,
         // Index of the batch globally, like any other transaction
-        batchIndex: BigInt(newTransactionIndex),
+        batchIndex: BigInt(nextTransactionIndex),
         multisigPda,
         vaultIndex: 0,
         transactionMessage: transferMessage,
@@ -360,7 +380,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         feePayer: creator,
         member: creator,
         multisigPda,
-        transactionIndex: newTransactionIndex,
+        transactionIndex: nextTransactionIndex,
       });
 
       await connection.confirmTransaction(activate, "confirmed");
@@ -371,7 +391,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         connection,
         feePayer: creator,
         multisigPda,
-        transactionIndex: BigInt(newTransactionIndex),
+        transactionIndex: BigInt(nextTransactionIndex),
         member: creator,
       });
 
@@ -383,7 +403,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         connection,
         feePayer: creator,
         multisigPda,
-        transactionIndex: BigInt(newTransactionIndex),
+        transactionIndex: BigInt(nextTransactionIndex),
         member: secondMember,
       });
 
@@ -405,9 +425,9 @@ describe("Interacting with the Squads V4 SDK", () => {
           ],
         }).compileToV0Message()
       );
-  
+
       tx.sign([creator]);
-  
+
       console.log("✨ Sending more SOL to vault...");
       const sendSig = await connection.sendTransaction(tx);
       console.log("✅ SOL sent to vault:", sendSig);
@@ -417,7 +437,7 @@ describe("Interacting with the Squads V4 SDK", () => {
         connection,
         feePayer: creator,
         // Index of the batch globally
-        batchIndex: newTransactionIndex,
+        batchIndex: nextTransactionIndex,
         multisigPda,
         // Index of targeted transaction in the batch
         transactionIndex: 1,
